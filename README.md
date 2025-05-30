@@ -39,6 +39,53 @@ oapix-gen -spec api.yaml -out ./generated -package myapi
 
 # With custom templates
 oapix-gen -spec api.yaml -out ./generated -templates ./my-templates
+
+# With custom client import path (use your own client implementation)
+oapix-gen -spec api.yaml -out ./generated -package myapi -client-import github.com/myorg/myclient
+```
+
+### Generator Options
+
+- `-spec` (required): Path to OpenAPI specification file
+- `-out`: Output directory for generated code (default: current directory)
+- `-package` (required): Package name for generated code
+- `-client`: Name of the generated client struct (default: "Client")
+- `-templates`: Directory containing custom templates
+- `-model-package`: Package name for models (defaults to main package)
+- `-client-package`: Package name for client (defaults to main package)
+- `-client-import`: Custom import path for client packages (default: "github.com/jmcarbo/oapix/pkg/client")
+- `-models-only`: Generate only models
+- `-client-only`: Generate only client
+- `-verbose`: Enable verbose output
+
+### Custom Client Import
+
+The `-client-import` flag allows you to use a custom client implementation instead of the default oapix client. This is useful when:
+
+1. **Using a forked version**: You've forked oapix and want to use your customized client
+   ```bash
+   oapix-gen -spec api.yaml -package myapi -client-import github.com/myorg/oapix-fork/pkg/client
+   ```
+
+2. **Using a vendored client**: You've vendored the client packages in your project
+   ```bash
+   oapix-gen -spec api.yaml -package myapi -client-import myproject/vendor/oapix/client
+   ```
+
+3. **Using a completely custom implementation**: You've implemented your own client that follows the oapix interface
+   ```bash
+   oapix-gen -spec api.yaml -package myapi -client-import github.com/myorg/custom-http-client
+   ```
+
+The custom client package must implement the same interfaces and types as the original oapix client package.
+
+**Note**: When using `-client-import`, the generated code will import from your specified path instead of the default:
+```go
+// Default import
+import "github.com/jmcarbo/oapix/pkg/client"
+
+// With -client-import github.com/myorg/myclient
+import "github.com/myorg/myclient"
 ```
 
 ### Example OpenAPI Spec
