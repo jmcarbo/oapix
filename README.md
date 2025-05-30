@@ -24,8 +24,20 @@ go get github.com/jmcarbo/oapix
 
 ### Install the Generator
 
+#### Using Go Install
+
 ```bash
 go install github.com/jmcarbo/oapix/cmd/oapix-gen@latest
+```
+
+#### Using Docker
+
+```bash
+# Build the Docker image
+docker build -t oapix-gen .
+
+# Or pull from Docker Hub (if published)
+docker pull jmcarbo/oapix-gen:latest
 ```
 
 ### Generate a Client
@@ -42,6 +54,29 @@ oapix-gen -spec api.yaml -out ./generated -templates ./my-templates
 
 # With custom client import path (use your own client implementation)
 oapix-gen -spec api.yaml -out ./generated -package myapi -client-import github.com/myorg/myclient
+```
+
+#### Using Docker
+
+```bash
+# Generate client using Docker (mount current directory)
+docker run --rm -v $(pwd):/work -w /work oapix-gen \
+  -spec api.yaml \
+  -package myapi \
+  -output ./generated
+
+# With custom options
+docker run --rm -v $(pwd):/work -w /work oapix-gen \
+  -spec api.yaml \
+  -package myapi \
+  -output ./generated \
+  -client-import github.com/myorg/myclient \
+  -verbose
+
+# Using a spec from URL (requires network access)
+docker run --rm -v $(pwd):/output -w /output oapix-gen \
+  -spec https://api.example.com/openapi.yaml \
+  -package myapi
 ```
 
 ### Generator Options

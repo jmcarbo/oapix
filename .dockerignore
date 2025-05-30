@@ -1,0 +1,47 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+docs/
+
+# Test files
+*_test.go
+testdata/
+examples/
+
+# Build artifacts
+bin/
+dist/
+build/
+*.exe
+oapix-gen
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Go workspace
+go.work
+go.work.sum
