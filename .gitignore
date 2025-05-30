@@ -1,0 +1,105 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build directories
+bin/
+dist/
+build/
+
+# Temporary files and directories
+tmp/
+temp/
+*.tmp
+*.temp
+*.log
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Go specific
+go.sum.backup
+
+# Air live reload
+.air.toml
+tmp/
+
+# Delve debugger
+__debug_bin*
+debug.test
+
+# GoLand
+.idea/
+
+# Generated files
+*.generated.go
+*_gen.go
+
+# Coverage
+coverage.txt
+coverage.html
+coverage.out
+*.coverprofile
+
+# Profiling
+*.prof
+*.pprof
+
+# Binary output
+oapix-gen
+cmd/oapix-gen/oapix-gen
+
+# Local testing
+testdata/output/
+examples/output/
+
+# Claude Code specific
+CLAUDE.md
+.claude/

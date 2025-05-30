@@ -1,0 +1,106 @@
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      operationId: createUser
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      summary: Get a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: User ID
+        name:
+          type: string
+          description: User name
+        email:
+          type: string
+          description: User email
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    UserStatus:
+      type: string
+      enum:
+        - active
+        - inactive
+        - pending
+
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+        email:
+          type: string

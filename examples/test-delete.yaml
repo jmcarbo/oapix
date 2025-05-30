@@ -1,0 +1,28 @@
+openapi: 3.0.0
+info:
+  title: Test Delete API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+
+paths:
+  /api/v1/packages/{packageKey}/public-form-links/{id}:
+    delete:
+      operationId: delete
+      summary: Delete a form link
+      parameters:
+        - name: packageKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No content
+        '404':
+          description: Not found
