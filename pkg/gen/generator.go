@@ -34,10 +34,14 @@ type Config struct {
 	ModelPackage string
 	// ClientPackage is the package name for client (if different from main package)
 	ClientPackage string
+	// ClientImport is the custom import path for client packages
+	ClientImport string
 	// GenerateModels indicates whether to generate model files
 	GenerateModels bool
 	// GenerateClient indicates whether to generate client files
 	GenerateClient bool
+	// EmbedClient indicates whether to copy client packages instead of importing
+	EmbedClient bool
 	// Verbose enables verbose output
 	Verbose bool
 }
@@ -599,10 +603,16 @@ func (g *Generator) getModelImports(models []Model) []string {
 
 // getClientImports returns required imports for client
 func (g *Generator) getClientImports(operations []Operation) []string {
+	// Use custom client import path if specified, otherwise use default
+	clientImportPath := g.config.ClientImport
+	if clientImportPath == "" {
+		clientImportPath = "github.com/jmcarbo/oapix/pkg/client"
+	}
+
 	imports := map[string]bool{
-		"context":                             true,
-		"fmt":                                 true,
-		"github.com/jmcarbo/oapix/pkg/client": true,
+		"context":        true,
+		"fmt":            true,
+		clientImportPath: true,
 	}
 
 	// Add model import if needed

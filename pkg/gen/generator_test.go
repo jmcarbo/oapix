@@ -774,3 +774,100 @@ components:
 		}
 	}
 }
+
+func TestGenerateWithCustomClientImport(t *testing.T) {
+	// Create a simple OpenAPI spec
+	specContent := `
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      summary: List users
+      operationId: listUsers
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+`
+
+	tmpFile, err := os.CreateTemp("", "custom-import-spec-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Remove(tmpFile.Name())
+	}()
+
+	if _, err := tmpFile.WriteString(specContent); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "gen-custom-import-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	// Test with custom client import path
+	customImport := "github.com/myorg/mycustom/client"
+	config := &Config{
+		SpecPath:       tmpFile.Name(),
+		OutputDir:      tmpDir,
+		PackageName:    "testapi",
+		ClientName:     "TestClient",
+		GenerateClient: true,
+		GenerateModels: true,
+		ClientImport:   customImport,
+	}
+
+	gen, err := NewGenerator(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := gen.LoadSpec(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := gen.Generate(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check client file contains custom import
+	clientContent, err := os.ReadFile(filepath.Join(tmpDir, "test_client.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clientStr := string(clientContent)
+	if !strings.Contains(clientStr, customImport) {
+		t.Errorf("client.go should contain custom import %q", customImport)
+	}
+
+	// Ensure default import is not present
+	if strings.Contains(clientStr, "github.com/jmcarbo/oapix/pkg/client") {
+		t.Error("client.go should not contain default import when custom import is specified")
+	}
+}
