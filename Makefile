@@ -69,9 +69,62 @@ install-tools: ## Install required development tools
 run: ## Run the application
 	go run .
 
+# Docker registry configuration
+DOCKER_REGISTRY ?= ghcr.io
+DOCKER_ORG ?= jmcarbo
+DOCKER_IMAGE ?= $(DOCKER_REGISTRY)/$(DOCKER_ORG)/oapix
+VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+VERSION_NO_V := $(shell echo $(VERSION) | sed 's/^v//')
+
 .PHONY: docker-build
-docker-build: ## Build Docker image
-	docker build -t oapix:latest .
+docker-build: ## Build Docker image with version tag
+	docker build -t $(DOCKER_IMAGE):$(VERSION_NO_V) -t $(DOCKER_IMAGE):latest .
+
+.PHONY: docker-build-all
+docker-build-all: docker-build ## Build and tag Docker image with multiple tags
+	@if echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.0$$"; then \
+		MINOR=$$(echo $(VERSION_NO_V) | cut -d. -f1,2); \
+		docker tag $(DOCKER_IMAGE):$(VERSION_NO_V) $(DOCKER_IMAGE):$$MINOR; \
+		echo "Tagged as $(DOCKER_IMAGE):$$MINOR"; \
+	fi
+	@if echo "$(VERSION)" | grep -qE "^v[0-9]+\.0\.0$$"; then \
+		MAJOR=$$(echo $(VERSION_NO_V) | cut -d. -f1); \
+		docker tag $(DOCKER_IMAGE):$(VERSION_NO_V) $(DOCKER_IMAGE):$$MAJOR; \
+		echo "Tagged as $(DOCKER_IMAGE):$$MAJOR"; \
+	fi
+
+.PHONY: docker-push
+docker-push: docker-build-all ## Build and push Docker image with all tags
+	docker push $(DOCKER_IMAGE):$(VERSION_NO_V)
+	docker push $(DOCKER_IMAGE):latest
+	@if echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.0$$"; then \
+		MINOR=$$(echo $(VERSION_NO_V) | cut -d. -f1,2); \
+		docker push $(DOCKER_IMAGE):$$MINOR; \
+	fi
+	@if echo "$(VERSION)" | grep -qE "^v[0-9]+\.0\.0$$"; then \
+		MAJOR=$$(echo $(VERSION_NO_V) | cut -d. -f1); \
+		docker push $(DOCKER_IMAGE):$$MAJOR; \
+	fi
+
+.PHONY: docker-info
+docker-info: ## Show Docker image information
+	@echo "Docker image: $(DOCKER_IMAGE)"
+	@echo "Version: $(VERSION) ($(VERSION_NO_V))"
+	@echo "Tags that would be created:"
+	@echo "  - $(DOCKER_IMAGE):$(VERSION_NO_V)"
+	@echo "  - $(DOCKER_IMAGE):latest"
+	@if echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.0$$"; then \
+		MINOR=$$(echo $(VERSION_NO_V) | cut -d. -f1,2); \
+		echo "  - $(DOCKER_IMAGE):$$MINOR"; \
+	fi
+	@if echo "$(VERSION)" | grep -qE "^v[0-9]+\.0\.0$$"; then \
+		MAJOR=$$(echo $(VERSION_NO_V) | cut -d. -f1); \
+		echo "  - $(DOCKER_IMAGE):$$MAJOR"; \
+	fi
 
 .PHONY: all
 all: clean deps fmt lint test build ## Run full build pipeline
+
+.PHONY: version
+version: ## Show current version
+	@git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"
