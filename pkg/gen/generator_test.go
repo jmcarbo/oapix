@@ -220,7 +220,7 @@ func TestExtractModels(t *testing.T) {
 	objectType := openapi3.Types{"object"}
 	stringType := openapi3.Types{"string"}
 	integerType := openapi3.Types{"integer"}
-	
+
 	spec := &openapi3.T{
 		Components: &openapi3.Components{
 			Schemas: map[string]*openapi3.SchemaRef{
@@ -713,12 +713,12 @@ components:
 
 	// Check models content
 	modelsStr := string(modelsContent)
-	
+
 	// Debug: print the generated content
 	if testing.Verbose() {
 		t.Logf("Generated models.go:\n%s", modelsStr)
 	}
-	
+
 	// Use regexp to handle variable whitespace in formatted Go code
 	expectedPatterns := []struct {
 		pattern string

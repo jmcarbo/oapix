@@ -336,8 +336,8 @@ func TestFilterParamsByIn(t *testing.T) {
 	}
 
 	tests := []struct {
-		in       string
-		wantLen  int
+		in        string
+		wantLen   int
 		wantFirst string
 	}{
 		{"path", 2, "id"},
@@ -493,7 +493,7 @@ func TestGoDoc(t *testing.T) {
 
 func TestIncDec(t *testing.T) {
 	tests := []struct {
-		fn   func(int) int
+		fn    func(int) int
 		input int
 		want  int
 	}{
