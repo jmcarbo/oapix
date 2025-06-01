@@ -73,5 +73,29 @@ run: ## Run the application
 docker-build: ## Build Docker image
 	docker build -t oapix:latest .
 
+.PHONY: docker-push
+docker-push: docker-build ## Build and push Docker image to registry
+	docker push oapix:latest
+
 .PHONY: all
 all: clean deps fmt lint test build ## Run full build pipeline
+
+.PHONY: version
+version: ## Show current version
+	@git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"
+
+.PHONY: version-bump
+version-bump: ## Analyze commits and create new version tag
+	@./scripts/version-bump.sh
+
+.PHONY: version-bump-dry
+version-bump-dry: ## Dry run of version bump (show what would happen)
+	@DRY_RUN=true ./scripts/version-bump.sh
+
+.PHONY: release
+release: check version-bump ## Run checks and create a new release tag
+	@echo "Release created. Don't forget to push the tag!"
+	@echo "Run: git push origin $$(git describe --tags --abbrev=0)"
+
+.PHONY: release-dry
+release-dry: check version-bump-dry ## Dry run of release process

@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version analysis
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install dependencies
+        run: |
+          go install mvdan.cc/gofumpt@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run checks
+        run: make check
+
+      - name: Check for version bump
+        id: version_check
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          
+          # Run version bump in dry-run mode
+          DRY_RUN=true ./scripts/version-bump.sh > version_output.txt
+          
+          # Extract new version from output
+          NEW_VERSION=$(grep "would create tag:" version_output.txt | cut -d' ' -f6)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          # Check if version would change
+          if [ "$CURRENT_VERSION" != "$NEW_VERSION" ]; then
+            echo "needs_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "needs_release=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Extract bump type
+          BUMP_TYPE=$(grep "Bump type:" version_output.txt | cut -d' ' -f3)
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Create version tag
+        if: steps.version_check.outputs.needs_release == 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          ./scripts/version-bump.sh
+          git push origin ${{ steps.version_check.outputs.new_version }}
+
+      - name: Generate changelog
+        if: steps.version_check.outputs.needs_release == 'true'
+        id: changelog
+        run: |
+          # Get commits since last tag
+          COMMITS=$(git log "${{ steps.version_check.outputs.current_version }}..HEAD" --pretty=format:"- %s" --no-merges)
+          
+          # Create changelog content
+          cat > CHANGELOG.md << EOF
+          ## What's Changed
+          
+          $COMMITS
+          
+          **Full Changelog**: https://github.com/jmcarbo/oapix/compare/${{ steps.version_check.outputs.current_version }}...${{ steps.version_check.outputs.new_version }}
+          EOF
+          
+          # Save changelog for release body
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: steps.version_check.outputs.needs_release == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version_check.outputs.new_version }}
+          name: Release ${{ steps.version_check.outputs.new_version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+      - name: Skip release
+        if: steps.version_check.outputs.needs_release == 'false'
+        run: echo "No release needed - no feature or fix commits since last tag"
