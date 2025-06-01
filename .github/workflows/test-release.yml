@@ -1,0 +1,56 @@
+name: Test Release Process
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  test-release:
+    name: Test Release Process
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Test version detection
+        run: |
+          echo "Current version:"
+          make version
+          
+          echo -e "\nDry run version bump:"
+          make version-bump-dry
+          
+      - name: Show commit analysis
+        run: |
+          echo "Recent commits that would affect versioning:"
+          git log --oneline --pretty=format:"%h %s" -10
+          
+          echo -e "\n\nCommit type analysis:"
+          git log --pretty=format:"%s" --no-merges -10 | while read commit; do
+            if echo "$commit" | grep -qE "^(feat|fix|refactor|perf|style|docs|test|chore)(\(.+\))?!:"; then
+              echo "MAJOR: $commit"
+            elif echo "$commit" | grep -qE "BREAKING CHANGE|BREAKING-CHANGE"; then
+              echo "MAJOR: $commit"
+            elif echo "$commit" | grep -qE "^feat(\(.+\))?:"; then
+              echo "MINOR: $commit"
+            elif echo "$commit" | grep -qE "^fix(\(.+\))?:"; then
+              echo "PATCH: $commit"
+            else
+              echo "OTHER: $commit"
+            fi
+          done
