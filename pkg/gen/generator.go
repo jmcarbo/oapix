@@ -153,7 +153,7 @@ func (g *Generator) Generate() error {
 	}
 
 	// Create output directory
-	if err := os.MkdirAll(g.config.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(g.config.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -190,7 +190,7 @@ func (g *Generator) generateModels() error {
 	if g.config.ModelPackage != g.config.PackageName {
 		// Create subdirectory for models
 		modelDir := filepath.Join(g.config.OutputDir, "models")
-		if err := os.MkdirAll(modelDir, 0755); err != nil {
+		if err := os.MkdirAll(modelDir, 0o755); err != nil {
 			return fmt.Errorf("failed to create models directory: %w", err)
 		}
 		outputPath = filepath.Join(modelDir, "models.go")
@@ -238,13 +238,13 @@ func (g *Generator) generateFile(templateName string, data interface{}, outputPa
 		if g.config.Verbose {
 			fmt.Printf("Warning: failed to format generated code: %v\n", err)
 			fmt.Printf("Writing unformatted code to %s.unformatted\n", outputPath)
-			_ = os.WriteFile(outputPath+".unformatted", buf.Bytes(), 0644)
+			_ = os.WriteFile(outputPath+".unformatted", buf.Bytes(), 0o644)
 		}
 		return fmt.Errorf("failed to format generated code: %w", err)
 	}
 
 	// Write the file
-	if err := os.WriteFile(outputPath, formatted, 0644); err != nil {
+	if err := os.WriteFile(outputPath, formatted, 0o644); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", outputPath, err)
 	}
 
@@ -273,15 +273,17 @@ type Field struct {
 
 // Operation represents an API operation
 type Operation struct {
-	Name            string
-	Method          string
-	Path            string
-	Description     string
-	OperationID     string
-	Parameters      []Parameter
-	RequestBody     *RequestBody
-	Responses       map[string]Response
-	SuccessResponse *Response
+	Name                        string
+	Method                      string
+	Path                        string
+	Description                 string
+	OperationID                 string
+	Parameters                  []Parameter
+	RequestBody                 *RequestBody
+	Responses                   map[string]Response
+	SuccessResponse             *Response
+	HasMultipleSuccessResponses bool
+	ErrorResponses              []Response
 }
 
 // Parameter represents an API parameter
@@ -543,6 +545,7 @@ func (g *Generator) extractPathOperations(path string, pathItem *openapi3.PathIt
 
 		// Extract responses
 		if op.Responses != nil {
+			successCount := 0
 			for statusCode, responseRef := range op.Responses.Map() {
 				if responseRef.Value == nil {
 					continue
@@ -557,14 +560,26 @@ func (g *Generator) extractPathOperations(path string, pathItem *openapi3.PathIt
 				}
 				if content, ok := responseRef.Value.Content["application/json"]; ok && content.Schema != nil {
 					resp.Type = g.schemaRefToGoType(content.Schema)
+				} else if content, ok := responseRef.Value.Content["*/*"]; ok && content.Schema != nil {
+					// Handle wildcard content type
+					resp.Type = g.schemaRefToGoType(content.Schema)
 				}
 				operation.Responses[statusCode] = resp
 
-				// Set success response (2xx)
-				if strings.HasPrefix(statusCode, "2") && operation.SuccessResponse == nil {
-					operation.SuccessResponse = &resp
+				// Track success responses (2xx)
+				if strings.HasPrefix(statusCode, "2") {
+					successCount++
+					if operation.SuccessResponse == nil {
+						operation.SuccessResponse = &resp
+					}
+				}
+
+				// Track error responses (4xx and 5xx)
+				if strings.HasPrefix(statusCode, "4") || strings.HasPrefix(statusCode, "5") {
+					operation.ErrorResponses = append(operation.ErrorResponses, resp)
 				}
 			}
+			operation.HasMultipleSuccessResponses = successCount > 1
 		}
 
 		operations = append(operations, operation)

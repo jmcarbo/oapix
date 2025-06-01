@@ -24,7 +24,7 @@ func New{{.ClientName}}(config *client.Config) (*{{.ClientName}}, error) {
 
 {{range .Operations}}
 {{if .Description}}{{goDoc .Description ""}}{{end}}
-func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) {{if .SuccessResponse}}{{if .SuccessResponse.Type}}(*{{.SuccessResponse.Type}}, error){{else}}error{{end}}{{else}}error{{end}} {
+func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) (*client.MultiResponse, error) {
 	path := fmt.Sprintf("{{buildPath .Path .Parameters}}"{{range filterParamsByIn .Parameters "path"}}, {{.Name}}{{end}})
 
 {{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}
@@ -47,7 +47,6 @@ func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) {{if .SuccessRe
 {{end}}
 {{end}}
 
-{{if .SuccessResponse}}{{if .SuccessResponse.Type}}
 {{if .RequestBody}}
 	resp, err := c.RequestJSON(ctx, "{{.Method}}", path, req{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
 {{else}}
@@ -57,36 +56,7 @@ func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) {{if .SuccessRe
 		return nil, err
 	}
 
-	var result {{.SuccessResponse.Type}}
-	if err := client.ParseJSON(resp, &result); err != nil {
-		return nil, err
-	}
-	
-	return &result, nil
-{{else}}
-{{if .RequestBody}}
-	_, err := c.RequestJSON(ctx, "{{.Method}}", path, req{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
-{{else}}
-	_, err := c.Request(ctx, "{{.Method}}", path, nil{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
-{{end}}
-	if err != nil {
-		return err
-	}
-
-	return nil
-{{end}}
-{{else}}
-{{if .RequestBody}}
-	_, err := c.RequestJSON(ctx, "{{.Method}}", path, req{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
-{{else}}
-	_, err := c.Request(ctx, "{{.Method}}", path, nil{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
-{{end}}
-	if err != nil {
-		return err
-	}
-
-	return nil
-{{end}}
+	return &client.MultiResponse{Response: *resp}, nil
 }
 
 {{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}
@@ -98,6 +68,34 @@ type {{.Name}}Params struct {
 	{{toPascalCase .Name}} {{.Type}}
 {{end}}
 {{end}}
+}
+{{end}}
+
+{{if .HasMultipleSuccessResponses}}
+// {{.Name}}Response provides type-safe access to different response types
+type {{.Name}}Response struct {
+	*client.MultiResponse
+}
+
+{{range $code, $resp := .Responses}}
+{{if and (startsWith $code "2") $resp.Type}}
+// As{{$code}} returns the response as {{$resp.Type}} for status {{$code}}
+func (r *{{$.Name}}Response) As{{$code}}() (*{{$resp.Type}}, error) {
+	if !r.Is({{$code}}) {
+		return nil, fmt.Errorf("expected status {{$code}}, got %d", r.StatusCode)
+	}
+	var result {{$resp.Type}}
+	if err := r.As(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+{{end}}
+{{end}}
+
+// Wrap{{.Name}}Response wraps a MultiResponse as {{.Name}}Response
+func Wrap{{.Name}}Response(resp *client.MultiResponse) *{{.Name}}Response {
+	return &{{.Name}}Response{MultiResponse: resp}
 }
 {{end}}
 {{end}}
