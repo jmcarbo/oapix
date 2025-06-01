@@ -54,7 +54,9 @@ func TestClientCredentialsTokenSource(t *testing.T) {
 			Scope:       strings.Join(expectedScopes, " "),
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("Failed to encode response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -123,7 +125,9 @@ func TestClientCredentialsAuth(t *testing.T) {
 			ExpiresIn:   3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			t.Errorf("Failed to encode response: %v", err)
+		}
 	}))
 	defer tokenServer.Close()
 
@@ -151,15 +155,15 @@ func TestClientCredentialsAuth(t *testing.T) {
 
 func TestClientCredentialsTokenSource_ErrorHandling(t *testing.T) {
 	tests := []struct {
-		name           string
-		serverHandler  func(w http.ResponseWriter, r *http.Request)
-		expectedError  string
+		name          string
+		serverHandler func(w http.ResponseWriter, r *http.Request)
+		expectedError string
 	}{
 		{
 			name: "HTTP 401 Unauthorized",
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(`{"error": "invalid_client"}`))
+				_, _ = w.Write([]byte(`{"error": "invalid_client"}`))
 			},
 			expectedError: "token request failed with status 401",
 		},
@@ -167,7 +171,7 @@ func TestClientCredentialsTokenSource_ErrorHandling(t *testing.T) {
 			name: "Invalid JSON response",
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`invalid json`))
+				_, _ = w.Write([]byte(`invalid json`))
 			},
 			expectedError: "failed to decode token response",
 		},
@@ -175,7 +179,7 @@ func TestClientCredentialsTokenSource_ErrorHandling(t *testing.T) {
 			name: "Empty response",
 			serverHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{}`))
+				_, _ = w.Write([]byte(`{}`))
 			},
 			expectedError: "", // Should succeed but with empty token
 		},

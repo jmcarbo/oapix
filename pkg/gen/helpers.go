@@ -41,6 +41,7 @@ func templateFuncs() template.FuncMap {
 		"goDoc":                goDoc,
 		"inc":                  inc,
 		"dec":                  dec,
+		"startsWith":           strings.HasPrefix,
 	}
 }
 
@@ -54,13 +55,13 @@ func toPascalCase(s string) string {
 	// First, handle camelCase by inserting spaces before uppercase letters
 	var words []string
 	var currentWord strings.Builder
-	
+
 	for i, r := range s {
 		if i > 0 && unicode.IsUpper(r) {
 			// Check if previous character is lowercase or if next character is lowercase
 			prevIsLower := unicode.IsLower(rune(s[i-1]))
 			nextIsLower := i+1 < len(s) && unicode.IsLower(rune(s[i+1]))
-			
+
 			if prevIsLower || nextIsLower {
 				// Start a new word
 				if currentWord.Len() > 0 {
@@ -69,7 +70,7 @@ func toPascalCase(s string) string {
 				}
 			}
 		}
-		
+
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			currentWord.WriteRune(r)
 		} else {
@@ -80,7 +81,7 @@ func toPascalCase(s string) string {
 			}
 		}
 	}
-	
+
 	// Don't forget the last word
 	if currentWord.Len() > 0 {
 		words = append(words, currentWord.String())
@@ -92,12 +93,12 @@ func toPascalCase(s string) string {
 		if word == "" {
 			continue
 		}
-		
+
 		// Special handling for known acronyms
 		upperWord := strings.ToUpper(word)
-		if upperWord == "ID" || upperWord == "URL" || upperWord == "API" || 
-		   upperWord == "HTTP" || upperWord == "HTTPS" || upperWord == "JSON" || 
-		   upperWord == "XML" {
+		if upperWord == "ID" || upperWord == "URL" || upperWord == "API" ||
+			upperWord == "HTTP" || upperWord == "HTTPS" || upperWord == "JSON" ||
+			upperWord == "XML" {
 			result += upperWord
 		} else {
 			// Check if word starts with a digit
@@ -110,19 +111,19 @@ func toPascalCase(s string) string {
 						break
 					}
 				}
-				
+
 				if letterStart > 0 {
 					// Split at the letter boundary
 					result += word[:letterStart]
 					if i == 0 && len(result) == letterStart {
 						// First word after numbers should be capitalized
-						result += strings.ToUpper(word[letterStart:letterStart+1])
+						result += strings.ToUpper(word[letterStart : letterStart+1])
 						if letterStart+1 < len(word) {
 							result += strings.ToLower(word[letterStart+1:])
 						}
 					} else {
 						// Already have content, capitalize normally
-						result += strings.ToUpper(word[letterStart:letterStart+1])
+						result += strings.ToUpper(word[letterStart : letterStart+1])
 						if letterStart+1 < len(word) {
 							result += strings.ToLower(word[letterStart+1:])
 						}
@@ -149,7 +150,7 @@ func toCamelCase(s string) string {
 	if pascal == "" {
 		return ""
 	}
-	
+
 	// Find the first lowercase letter position
 	for i, r := range pascal {
 		if unicode.IsLower(r) {
@@ -163,7 +164,7 @@ func toCamelCase(s string) string {
 			return strings.ToLower(pascal[:1]) + pascal[1:]
 		}
 	}
-	
+
 	// All uppercase, convert all to lowercase
 	return strings.ToLower(pascal)
 }
@@ -199,10 +200,10 @@ func toKebabCase(s string) string {
 func sanitizeGoName(s string) string {
 	// Store the original to check if it started with invalid chars
 	original := s
-	
+
 	// Replace invalid characters
 	s = regexp.MustCompile(`[^a-zA-Z0-9_]`).ReplaceAllString(s, "_")
-	
+
 	// Ensure it starts with a letter or underscore
 	// If the original started with a special char (not letter/digit/_), prepend V
 	if s != "" && !unicode.IsLetter(rune(s[0])) && s[0] != '_' {
@@ -211,7 +212,7 @@ func sanitizeGoName(s string) string {
 		// Original started with an invalid character that got replaced with _
 		s = "V" + s
 	}
-	
+
 	// Avoid Go keywords
 	keywords := map[string]bool{
 		"break": true, "case": true, "chan": true, "const": true, "continue": true,
@@ -220,11 +221,11 @@ func sanitizeGoName(s string) string {
 		"interface": true, "map": true, "package": true, "range": true, "return": true,
 		"select": true, "struct": true, "switch": true, "type": true, "var": true,
 	}
-	
+
 	if keywords[strings.ToLower(s)] {
 		s = s + "_"
 	}
-	
+
 	return s
 }
 
@@ -236,29 +237,29 @@ func isBuiltinType(t string) bool {
 		"float32": true, "float64": true, "bool": true, "byte": true, "rune": true,
 		"interface{}": true, "error": true,
 	}
-	
+
 	// Handle slices and maps
 	if strings.HasPrefix(t, "[]") || strings.HasPrefix(t, "map[") {
 		return true
 	}
-	
+
 	return builtins[t]
 }
 
 // needsPointer determines if a field should be a pointer
 func needsPointer(field Field) bool {
 	// Slices, maps, and interfaces don't need pointers for omitempty
-	if strings.HasPrefix(field.Type, "[]") || 
-	   strings.HasPrefix(field.Type, "map[") || 
-	   field.Type == "interface{}" {
+	if strings.HasPrefix(field.Type, "[]") ||
+		strings.HasPrefix(field.Type, "map[") ||
+		field.Type == "interface{}" {
 		return false
 	}
-	
+
 	// Required fields don't need pointers unless nullable
 	if field.Required && !field.Nullable {
 		return false
 	}
-	
+
 	// Optional fields need pointers for proper omitempty behavior
 	return !field.Required || field.Nullable
 }
@@ -268,7 +269,7 @@ func pluralize(s string) string {
 	if s == "" {
 		return ""
 	}
-	
+
 	// Handle common irregular plurals
 	irregular := map[string]string{
 		"child":  "children",
@@ -280,24 +281,24 @@ func pluralize(s string) string {
 		"goose":  "geese",
 		"mouse":  "mice",
 	}
-	
+
 	if plural, ok := irregular[strings.ToLower(s)]; ok {
 		if unicode.IsUpper(rune(s[0])) {
 			return strings.ToUpper(plural[:1]) + plural[1:]
 		}
 		return plural
 	}
-	
+
 	// Handle common patterns
 	if strings.HasSuffix(s, "y") && !isVowel(s[len(s)-2]) {
 		return s[:len(s)-1] + "ies"
 	}
-	if strings.HasSuffix(s, "s") || strings.HasSuffix(s, "x") || 
-	   strings.HasSuffix(s, "z") || strings.HasSuffix(s, "ch") || 
-	   strings.HasSuffix(s, "sh") {
+	if strings.HasSuffix(s, "s") || strings.HasSuffix(s, "x") ||
+		strings.HasSuffix(s, "z") || strings.HasSuffix(s, "ch") ||
+		strings.HasSuffix(s, "sh") {
 		return s + "es"
 	}
-	
+
 	return s + "s"
 }
 
@@ -306,7 +307,7 @@ func singularize(s string) string {
 	if s == "" {
 		return ""
 	}
-	
+
 	// Handle common irregular plurals
 	irregular := map[string]string{
 		"children": "child",
@@ -318,36 +319,36 @@ func singularize(s string) string {
 		"geese":    "goose",
 		"mice":     "mouse",
 	}
-	
+
 	if singular, ok := irregular[strings.ToLower(s)]; ok {
 		if unicode.IsUpper(rune(s[0])) {
 			return strings.ToUpper(singular[:1]) + singular[1:]
 		}
 		return singular
 	}
-	
+
 	// Handle common patterns
 	if strings.HasSuffix(s, "ies") {
 		return s[:len(s)-3] + "y"
 	}
 	if strings.HasSuffix(s, "es") {
 		if strings.HasSuffix(s[:len(s)-2], "s") || strings.HasSuffix(s[:len(s)-2], "x") ||
-		   strings.HasSuffix(s[:len(s)-2], "z") || strings.HasSuffix(s[:len(s)-2], "ch") ||
-		   strings.HasSuffix(s[:len(s)-2], "sh") {
+			strings.HasSuffix(s[:len(s)-2], "z") || strings.HasSuffix(s[:len(s)-2], "ch") ||
+			strings.HasSuffix(s[:len(s)-2], "sh") {
 			return s[:len(s)-2]
 		}
 	}
 	if strings.HasSuffix(s, "s") && !strings.HasSuffix(s, "ss") {
 		return s[:len(s)-1]
 	}
-	
+
 	return s
 }
 
 // isVowel checks if a byte is a vowel
 func isVowel(b byte) bool {
 	return b == 'a' || b == 'e' || b == 'i' || b == 'o' || b == 'u' ||
-	       b == 'A' || b == 'E' || b == 'I' || b == 'O' || b == 'U'
+		b == 'A' || b == 'E' || b == 'I' || b == 'O' || b == 'U'
 }
 
 // buildPath builds a path with parameter substitution
@@ -420,7 +421,7 @@ func filterParamsByIn(params []Parameter, in string) []Parameter {
 // buildMethodSignature builds a Go method signature for an operation
 func buildMethodSignature(op Operation) string {
 	parts := []string{"ctx context.Context"}
-	
+
 	// Add path parameters
 	for _, param := range op.Parameters {
 		if param.In == "path" {
@@ -428,17 +429,17 @@ func buildMethodSignature(op Operation) string {
 			parts = append(parts, param.Name+" "+param.Type)
 		}
 	}
-	
+
 	// Add request body
 	if op.RequestBody != nil {
 		parts = append(parts, "req "+op.RequestBody.Type)
 	}
-	
+
 	// Add optional parameters struct if there are query/header params
 	if hasQueryParams(op.Parameters) || hasHeaderParams(op.Parameters) {
 		parts = append(parts, "params *"+op.Name+"Params")
 	}
-	
+
 	return strings.Join(parts, ", ")
 }
 
@@ -448,10 +449,10 @@ func goDoc(s string, prefix string) string {
 	if s == "" {
 		return ""
 	}
-	
+
 	lines := strings.Split(s, "\n")
 	result := []string{}
-	
+
 	for _, line := range lines {
 		if line == "" {
 			result = append(result, prefix+"//")
@@ -459,7 +460,7 @@ func goDoc(s string, prefix string) string {
 			result = append(result, prefix+"// "+line)
 		}
 	}
-	
+
 	return strings.Join(result, "\n")
 }
 
@@ -475,20 +476,20 @@ func getSchemaRef(schema *openapi3.Schema) string {
 func generateOperationName(method, path string) string {
 	// Remove path parameters
 	cleanPath := regexp.MustCompile(`\{[^}]+\}`).ReplaceAllString(path, "")
-	
+
 	// Split path into parts
 	parts := strings.Split(strings.Trim(cleanPath, "/"), "/")
-	
+
 	// Build name starting with method
 	result := toPascalCase(method)
-	
+
 	// Add path parts
 	for _, part := range parts {
 		if part != "" {
 			result += toPascalCase(part)
 		}
 	}
-	
+
 	return result
 }
 
