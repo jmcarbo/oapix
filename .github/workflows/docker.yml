@@ -18,6 +18,7 @@ env:
 permissions:
   contents: read
   packages: write
+  id-token: write  # Required for attestation
 
 jobs:
   build-and-push:
