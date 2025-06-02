@@ -26,6 +26,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -42,25 +45,32 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=
           tags: |
-            # Set latest tag for default branch
+            # Default branch (main)
             type=raw,value=latest,enable={{is_default_branch}}
-            # Tag with branch name
-            type=ref,event=branch
-            # Tag with PR number
+            type=raw,value=main,enable={{is_default_branch}}
+            
+            # Pull requests
             type=ref,event=pr
-            # Tag with git tag
+            
+            # Branch builds
+            type=ref,event=branch
+            
+            # Tag events - semantic versioning
             type=ref,event=tag
-            # Tag with version (v1.2.3 -> 1.2.3)
             type=semver,pattern={{version}}
-            # Tag with major.minor (v1.2.3 -> 1.2)
             type=semver,pattern={{major}}.{{minor}}
-            # Tag with major (v1.2.3 -> 1)
-            type=semver,pattern={{major}}
-            # Tag with sha
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            
+            # Git short SHA
             type=sha,prefix={{branch}}-
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -72,9 +82,35 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      - name: Create job summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "# Docker Build Summary 🐳" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Image Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry**: \`${{ env.REGISTRY }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository**: \`${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tags Created" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Platforms" >> $GITHUB_STEP_SUMMARY
+          echo "- linux/amd64" >> $GITHUB_STEP_SUMMARY
+          echo "- linux/arm64" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Semantic Version Tags" >> $GITHUB_STEP_SUMMARY
+            echo "This release includes semantic versioning tags for easy adoption:" >> $GITHUB_STEP_SUMMARY
+            echo "- Latest stable: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Full version: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${GITHUB_REF#refs/tags/v}\`" >> $GITHUB_STEP_SUMMARY
+          fi
