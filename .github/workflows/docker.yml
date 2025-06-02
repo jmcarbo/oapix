@@ -67,8 +67,10 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
             
-            # Git short SHA
-            type=sha,prefix={{branch}}-
+            # Git short SHA with branch prefix when available
+            type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
+            # Git short SHA without prefix for tags
+            type=sha,enable=${{ github.ref_type == 'tag' }}
 
       - name: Build and push Docker image
         id: build
