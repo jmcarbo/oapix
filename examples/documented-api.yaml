@@ -1,259 +1,241 @@
 openapi: 3.0.0
 info:
-  title: Well-Documented API Example
+  title: Documented API Example
   version: 1.0.0
-  description: |
-    This API demonstrates the enhanced documentation generation
-    feature in oapix that includes HTTP method and path information
-    in generated Go client method documentation.
-
-servers:
-  - url: https://api.example.com/v1
+  description: API to test comprehensive documentation generation
 
 paths:
-  /products:
+  /users:
     get:
-      operationId: listProducts
-      summary: List all products
+      operationId: listUsers
+      summary: List all users
       description: |
-        Retrieves a paginated list of all products in the catalog.
-        The results can be filtered by various criteria including
-        category, price range, and availability status.
+        Retrieves a paginated list of all users in the system.
+        Supports filtering by status and sorting by creation date.
       parameters:
-        - name: page
+        - name: status
           in: query
+          description: Filter users by status
           schema:
-            type: integer
-            default: 1
-          description: Page number for pagination
+            type: string
+            enum: [active, inactive, pending]
         - name: limit
           in: query
+          description: Maximum number of users to return
           schema:
             type: integer
             default: 20
-          description: Number of items per page
-        - name: category
+        - name: offset
           in: query
+          description: Number of users to skip
           schema:
-            type: string
-          description: Filter by product category
+            type: integer
+            default: 0
       responses:
-        '200':
-          description: Successful response with product list
+        "200":
+          description: Successful response with user list
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Product'
-                  pagination:
-                    $ref: '#/components/schemas/Pagination'
-
-    post:
-      operationId: createProduct
-      summary: Create a new product
-      description: |
-        Creates a new product in the catalog.
-        Requires admin authentication.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateProductRequest'
-      responses:
-        '201':
-          description: Product created successfully
+                $ref: '#/components/schemas/UserList'
+        "400":
+          description: Bad request - invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
-        '400':
-          description: Invalid product data
+                $ref: '#/components/schemas/Error'
+        "401":
+          description: Unauthorized - missing or invalid authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "500":
+          description: Internal server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /products/{productId}:
+  /users/{userId}:
     get:
-      operationId: getProduct
-      summary: Get product by ID
-      # No description - will only show summary
+      operationId: getUser
+      summary: Get user by ID
+      description: Retrieves detailed information about a specific user
       parameters:
-        - name: productId
+        - name: userId
           in: path
           required: true
+          description: Unique identifier of the user
           schema:
             type: string
-            format: uuid
-          description: Unique product identifier
       responses:
-        '200':
-          description: Product details
+        "200":
+          description: User found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
-        '404':
-          description: Product not found
+                $ref: '#/components/schemas/User'
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     put:
-      operationId: updateProduct
-      # No summary or description - will only show method and path
+      operationId: updateUser
+      summary: Update user
+      description: |
+        Updates an existing user's information.
+        Returns different response types based on what was updated.
       parameters:
-        - name: productId
+        - name: userId
           in: path
           required: true
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateProductRequest'
+              $ref: '#/components/schemas/UserUpdate'
       responses:
-        '200':
-          description: Product updated
+        "200":
+          description: User updated - basic fields only
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/User'
+        "201":
+          description: User updated - including profile picture
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithAvatar'
+        "202":
+          description: Update accepted - processing asynchronously
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateStatus'
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
 
-    delete:
-      operationId: deleteProduct
-      summary: Delete a product
-      description: Permanently removes a product from the catalog
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+  /search:
+    post:
+      operationId: searchItems
+      # No summary - testing that case
+      description: Search for items across multiple categories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
       responses:
-        '204':
-          description: Product deleted successfully
-        '404':
-          description: Product not found
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
 
-  /products/{productId}/reviews:
+  /simple-endpoint:
     get:
-      # No operationId - will generate name from method and path
-      summary: List product reviews
-      parameters:
-        - name: productId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      operationId: simpleGet
+      # No summary or description - testing minimal documentation
       responses:
-        '200':
-          description: List of reviews
+        "200":
+          description: Success
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Review'
+                type: object
 
 components:
   schemas:
-    Product:
-      type: object
-      required:
-        - id
-        - name
-        - price
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Unique product identifier
-        name:
-          type: string
-          description: Product name
-        description:
-          type: string
-          description: Product description
-        price:
-          type: number
-          format: decimal
-          description: Product price
-        category:
-          type: string
-          description: Product category
-        inStock:
-          type: boolean
-          description: Whether the product is in stock
-
-    CreateProductRequest:
-      type: object
-      required:
-        - name
-        - price
-        - category
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-        price:
-          type: number
-          format: decimal
-        category:
-          type: string
-
-    UpdateProductRequest:
-      type: object
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-        price:
-          type: number
-          format: decimal
-        category:
-          type: string
-        inStock:
-          type: boolean
-
-    Review:
+    User:
       type: object
       properties:
         id:
           type: string
-          format: uuid
-        productId:
+        name:
           type: string
-          format: uuid
-        rating:
+        email:
+          type: string
+        status:
+          type: string
+
+    UserWithAvatar:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            avatarUrl:
+              type: string
+            avatarSize:
+              type: integer
+
+    UserList:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
           type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-
-    Pagination:
-      type: object
-      properties:
-        page:
+        offset:
           type: integer
         limit:
           type: integer
-        totalPages:
-          type: integer
-        totalItems:
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        avatar:
+          type: string
+          format: binary
+
+    UpdateStatus:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        estimatedCompletion:
+          type: string
+          format: date-time
+
+    SearchRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+
+    SearchResults:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        totalCount:
           type: integer
 
     Error:
@@ -263,5 +245,16 @@ components:
           type: string
         message:
           type: string
-        details:
-          type: object
+
+    ValidationError:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
