@@ -365,7 +365,7 @@ func (g *Generator) schemaToModel(name string, schema *openapi3.Schema) *Model {
 			field := Field{
 				Name:        toPascalCase(propName),
 				JSONName:    propName,
-				Type:        g.schemaRefToGoType(propRef),
+				Type:        g.schemaRefToGoTypeWithName(propRef, propName),
 				Description: propRef.Value.Description,
 				Required:    required[propName],
 				Nullable:    propRef.Value.Nullable,
@@ -521,6 +521,120 @@ func (g *Generator) schemaRefToGoType(schemaRef *openapi3.SchemaRef) string {
 	// Otherwise, process the schema value
 	if schemaRef.Value != nil {
 		return g.schemaToGoType(schemaRef.Value)
+	}
+
+	return "interface{}"
+}
+
+// schemaRefToGoTypeWithName converts an OpenAPI schema reference to a Go type with field name context
+func (g *Generator) schemaRefToGoTypeWithName(schemaRef *openapi3.SchemaRef, fieldName string) string {
+	if schemaRef == nil {
+		return "interface{}"
+	}
+
+	// Check if this is a reference
+	if schemaRef.Ref != "" {
+		// Extract the type name from the reference
+		// e.g., "#/components/schemas/User" -> "User"
+		parts := strings.Split(schemaRef.Ref, "/")
+		if len(parts) > 0 {
+			return toPascalCase(parts[len(parts)-1])
+		}
+	}
+
+	// Otherwise, process the schema value
+	if schemaRef.Value != nil {
+		return g.schemaToGoTypeWithName(schemaRef.Value, fieldName)
+	}
+
+	return "interface{}"
+}
+
+// schemaToGoTypeWithName converts an OpenAPI schema to a Go type with field name context
+func (g *Generator) schemaToGoTypeWithName(schema *openapi3.Schema, fieldName string) string {
+	if schema == nil {
+		return "interface{}"
+	}
+
+	// Handle nullable types
+	if schema.Nullable {
+		baseType := g.schemaToGoTypeWithNameNonNullable(schema, fieldName)
+		if baseType != "interface{}" && !strings.HasPrefix(baseType, "[]") && !strings.HasPrefix(baseType, "map[") {
+			return "*" + baseType
+		}
+		return baseType
+	}
+
+	return g.schemaToGoTypeWithNameNonNullable(schema, fieldName)
+}
+
+// schemaToGoTypeWithNameNonNullable converts a non-nullable OpenAPI schema to a Go type with field name context
+func (g *Generator) schemaToGoTypeWithNameNonNullable(schema *openapi3.Schema, fieldName string) string {
+	// Handle AllOf/AnyOf/OneOf
+	if len(schema.AllOf) > 0 {
+		// For AllOf, we'll use the first schema as the base type
+		if len(schema.AllOf) > 0 && schema.AllOf[0].Value != nil {
+			return g.schemaToGoTypeWithName(schema.AllOf[0].Value, fieldName)
+		}
+	}
+
+	// Handle arrays
+	if schema.Type != nil && schema.Type.Is("array") {
+		if schema.Items != nil {
+			return "[]" + g.schemaRefToGoTypeWithName(schema.Items, fieldName)
+		}
+		return "[]interface{}"
+	}
+
+	// Handle basic types
+	if schema.Type != nil {
+		typeStr := ""
+		if len(*schema.Type) > 0 {
+			typeStr = (*schema.Type)[0]
+		}
+
+		switch typeStr {
+		case "string":
+			if schema.Format == "date-time" {
+				return "time.Time"
+			}
+			if schema.Format == "date" {
+				return "time.Time"
+			}
+			return "string"
+		case "integer":
+			// Check if field name contains "Date" and format is int32
+			if strings.Contains(strings.ToLower(fieldName), "date") && schema.Format == "int32" {
+				// Convert int32 dates to int64 to prevent Y2038 problem
+				// Unix timestamps stored as int32 will overflow in 2038
+				return "int64"
+			}
+			if schema.Format == "int32" {
+				return "int32"
+			}
+			return "int64"
+		case "number":
+			if schema.Format == "float" {
+				return "float32"
+			}
+			return "float64"
+		case "boolean":
+			return "bool"
+		case "object":
+			// Check if it has additionalProperties defined
+			if schema.AdditionalProperties.Schema != nil {
+				if schema.AdditionalProperties.Schema.Value != nil {
+					return "map[string]" + g.schemaToGoTypeWithName(schema.AdditionalProperties.Schema.Value, fieldName)
+				}
+				// Handle case where additionalProperties is a reference
+				return "map[string]" + g.schemaRefToGoTypeWithName(schema.AdditionalProperties.Schema, fieldName)
+			}
+			// If Has is explicitly set to true, it's a map[string]interface{}
+			if schema.AdditionalProperties.Has != nil && *schema.AdditionalProperties.Has {
+				return "map[string]interface{}"
+			}
+			return "interface{}"
+		}
 	}
 
 	return "interface{}"
