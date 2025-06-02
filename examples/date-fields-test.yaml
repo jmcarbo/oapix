@@ -1,0 +1,51 @@
+openapi: 3.0.0
+info:
+  title: Date Fields Test API
+  version: 1.0.0
+  description: API to test automatic conversion of int32 date fields to int64
+paths:
+  /users:
+    get:
+      operationId: getUsers
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: User ID (should remain int32)
+        createdDate:
+          type: integer
+          format: int32
+          description: Unix timestamp when user was created (should convert to int64)
+        updatedDate:
+          type: integer
+          format: int64
+          description: Unix timestamp when user was last updated (should remain int64)
+        lastLoginDate:
+          type: integer
+          format: int32
+          description: Unix timestamp of last login (should convert to int64)
+        age:
+          type: integer
+          format: int32
+          description: User age in years (should remain int32)
+        registrationDateMillis:
+          type: integer
+          format: int32
+          description: Registration date in milliseconds (should convert to int64)
+        score:
+          type: integer
+          format: int32
+          description: User score (should remain int32)

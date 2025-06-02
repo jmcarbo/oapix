@@ -1008,3 +1008,85 @@ paths:
 		t.Error("Expected GetUsers2 from operationId get_users_2")
 	}
 }
+
+func TestSchemaToGoTypeWithDateFields(t *testing.T) {
+	config := &Config{
+		PackageName: "testpkg",
+	}
+
+	gen, err := NewGenerator(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name      string
+		fieldName string
+		schema    *openapi3.Schema
+		want      string
+	}{
+		{
+			name:      "int32 date field should convert to int64",
+			fieldName: "createdDate",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"integer"},
+				Format: "int32",
+			},
+			want: "int64",
+		},
+		{
+			name:      "int32 non-date field should remain int32",
+			fieldName: "count",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"integer"},
+				Format: "int32",
+			},
+			want: "int32",
+		},
+		{
+			name:      "int64 date field should remain int64",
+			fieldName: "updatedDate",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"integer"},
+				Format: "int64",
+			},
+			want: "int64",
+		},
+		{
+			name:      "case insensitive date detection",
+			fieldName: "lastModifiedDATE",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"integer"},
+				Format: "int32",
+			},
+			want: "int64",
+		},
+		{
+			name:      "date in middle of field name",
+			fieldName: "userDateCreated",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"integer"},
+				Format: "int32",
+			},
+			want: "int64",
+		},
+		{
+			name:      "string date should be time.Time",
+			fieldName: "createdDate",
+			schema: &openapi3.Schema{
+				Type:   &openapi3.Types{"string"},
+				Format: "date-time",
+			},
+			want: "time.Time",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := gen.schemaToGoTypeWithName(tt.schema, tt.fieldName)
+			if got != tt.want {
+				t.Errorf("schemaToGoTypeWithName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
