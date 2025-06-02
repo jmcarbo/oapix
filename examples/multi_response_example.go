@@ -191,11 +191,11 @@ func (c *APIClient) GetUser(ctx context.Context, userId string) (*client.MultiRe
 }
 
 // Type-safe response wrapper (generated when HasMultipleSuccessResponses is true)
-type CreateAssetResponse struct {
+type CreateAssetResponseWrapper struct {
 	*client.MultiResponse
 }
 
-func (r *CreateAssetResponse) As200() (*ContentNodeTransport, error) {
+func (r *CreateAssetResponseWrapper) As200() (*ContentNodeTransport, error) {
 	if !r.Is(200) {
 		return nil, fmt.Errorf("expected status 200, got %d", r.StatusCode)
 	}
@@ -206,7 +206,7 @@ func (r *CreateAssetResponse) As200() (*ContentNodeTransport, error) {
 	return &result, nil
 }
 
-func (r *CreateAssetResponse) As201() (*ContentNodeTransport, error) {
+func (r *CreateAssetResponseWrapper) As201() (*ContentNodeTransport, error) {
 	if !r.Is(201) {
 		return nil, fmt.Errorf("expected status 201, got %d", r.StatusCode)
 	}
@@ -217,8 +217,8 @@ func (r *CreateAssetResponse) As201() (*ContentNodeTransport, error) {
 	return &result, nil
 }
 
-func WrapCreateAssetResponse(resp *client.MultiResponse) *CreateAssetResponse {
-	return &CreateAssetResponse{MultiResponse: resp}
+func WrapCreateAssetResponse(resp *client.MultiResponse) *CreateAssetResponseWrapper {
+	return &CreateAssetResponseWrapper{MultiResponse: resp}
 }
 
 // Model types (would be generated from OpenAPI spec)

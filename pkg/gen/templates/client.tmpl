@@ -22,24 +22,24 @@ func New{{.ClientName}}(config *client.Config) (*{{.ClientName}}, error) {
 	}, nil
 }
 
-{{range .Operations}}
-{{if .Description}}{{goDoc .Description ""}}{{end}}
-func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) (*client.MultiResponse, error) {
-	path := fmt.Sprintf("{{buildPath .Path .Parameters}}"{{range filterParamsByIn .Parameters "path"}}, {{.Name}}{{end}})
+{{range $op := .Operations}}
+{{if $op.Description}}{{goDoc $op.Description ""}}{{end}}
+func (c *{{$.ClientName}}) {{$op.Name}}({{buildMethodSignature $op}}) (*client.MultiResponse, error) {
+	path := fmt.Sprintf("{{buildPath $op.Path $op.Parameters}}"{{range filterParamsByIn $op.Parameters "path"}}, {{.Name}}{{end}})
 
-{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}
+{{if or (hasQueryParams $op.Parameters) (hasHeaderParams $op.Parameters)}}
 	opts := []client.RequestOption{}
-{{if hasQueryParams .Parameters}}
+{{if hasQueryParams $op.Parameters}}
 	// Add query parameters
-{{range filterParamsByIn .Parameters "query"}}
+{{range filterParamsByIn $op.Parameters "query"}}
 	if params != nil {
 		opts = append(opts, client.WithQueryParam("{{.Name}}", fmt.Sprintf("%v", params.{{toPascalCase .Name}})))
 	}
 {{end}}
 {{end}}
-{{if hasHeaderParams .Parameters}}
+{{if hasHeaderParams $op.Parameters}}
 	// Add header parameters
-{{range filterParamsByIn .Parameters "header"}}
+{{range filterParamsByIn $op.Parameters "header"}}
 	if params != nil && params.{{toPascalCase .Name}} != "" {
 		opts = append(opts, client.WithHeader("{{.Name}}", params.{{toPascalCase .Name}}))
 	}
@@ -47,10 +47,10 @@ func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) (*client.MultiR
 {{end}}
 {{end}}
 
-{{if .RequestBody}}
-	resp, err := c.RequestJSON(ctx, "{{.Method}}", path, req{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
+{{if $op.RequestBody}}
+	resp, err := c.RequestJSON(ctx, "{{$op.Method}}", path, req{{if or (hasQueryParams $op.Parameters) (hasHeaderParams $op.Parameters)}}, opts...{{end}})
 {{else}}
-	resp, err := c.Request(ctx, "{{.Method}}", path, nil{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}, opts...{{end}})
+	resp, err := c.Request(ctx, "{{$op.Method}}", path, nil{{if or (hasQueryParams $op.Parameters) (hasHeaderParams $op.Parameters)}}, opts...{{end}})
 {{end}}
 	if err != nil {
 		return nil, err
@@ -59,10 +59,10 @@ func (c *{{$.ClientName}}) {{.Name}}({{buildMethodSignature .}}) (*client.MultiR
 	return &client.MultiResponse{Response: *resp}, nil
 }
 
-{{if or (hasQueryParams .Parameters) (hasHeaderParams .Parameters)}}
-// {{.Name}}Params contains optional parameters for {{.Name}}
-type {{.Name}}Params struct {
-{{range .Parameters}}
+{{if or (hasQueryParams $op.Parameters) (hasHeaderParams $op.Parameters)}}
+// {{$op.Name}}Params contains optional parameters for {{$op.Name}}
+type {{$op.Name}}Params struct {
+{{range $op.Parameters}}
 {{if or (eq .In "query") (eq .In "header")}}
 {{if .Description}}{{goDoc .Description "\t"}}{{end}}
 	{{toPascalCase .Name}} {{.Type}}
@@ -71,16 +71,16 @@ type {{.Name}}Params struct {
 }
 {{end}}
 
-{{if .HasMultipleSuccessResponses}}
-// {{.Name}}Response provides type-safe access to different response types
-type {{.Name}}Response struct {
+{{if $op.HasMultipleSuccessResponses}}
+// {{$op.Name}}ResponseWrapper provides type-safe access to different response types
+type {{$op.Name}}ResponseWrapper struct {
 	*client.MultiResponse
 }
 
-{{range $code, $resp := .Responses}}
+{{range $code, $resp := $op.Responses}}
 {{if and (startsWith $code "2") $resp.Type}}
 // As{{$code}} returns the response as {{$resp.Type}} for status {{$code}}
-func (r *{{$.Name}}Response) As{{$code}}() (*{{$resp.Type}}, error) {
+func (r *{{$op.Name}}ResponseWrapper) As{{$code}}() (*{{$resp.Type}}, error) {
 	if !r.Is({{$code}}) {
 		return nil, fmt.Errorf("expected status {{$code}}, got %d", r.StatusCode)
 	}
@@ -93,9 +93,9 @@ func (r *{{$.Name}}Response) As{{$code}}() (*{{$resp.Type}}, error) {
 {{end}}
 {{end}}
 
-// Wrap{{.Name}}Response wraps a MultiResponse as {{.Name}}Response
-func Wrap{{.Name}}Response(resp *client.MultiResponse) *{{.Name}}Response {
-	return &{{.Name}}Response{MultiResponse: resp}
+// Wrap{{$op.Name}}Response wraps a MultiResponse as {{$op.Name}}ResponseWrapper
+func Wrap{{$op.Name}}Response(resp *client.MultiResponse) *{{$op.Name}}ResponseWrapper {
+	return &{{$op.Name}}ResponseWrapper{MultiResponse: resp}
 }
 {{end}}
 {{end}}
