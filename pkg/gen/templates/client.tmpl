@@ -23,8 +23,10 @@ func New{{.ClientName}}(config *client.Config) (*{{.ClientName}}, error) {
 }
 
 {{range $op := .Operations}}
-{{if $op.Description}}{{goDoc $op.Description ""}}{{end}}
-func (c *{{$.ClientName}}) {{$op.Name}}({{buildMethodSignature $op}}) (*client.MultiResponse, error) {
+// {{$op.Name}} performs a {{$op.Method}} request to {{$op.Path}}
+{{if $op.Summary}}// {{$op.Summary}}
+{{end}}{{if $op.Description}}{{goDoc $op.Description ""}}
+{{end}}func (c *{{$.ClientName}}) {{$op.Name}}({{buildMethodSignature $op}}) (*client.MultiResponse, error) {
 	path := fmt.Sprintf("{{buildPath $op.Path $op.Parameters}}"{{range filterParamsByIn $op.Parameters "path"}}, {{.Name}}{{end}})
 
 {{if or (hasQueryParams $op.Parameters) (hasHeaderParams $op.Parameters)}}

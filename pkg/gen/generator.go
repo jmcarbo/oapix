@@ -276,6 +276,7 @@ type Operation struct {
 	Name                        string
 	Method                      string
 	Path                        string
+	Summary                     string
 	Description                 string
 	OperationID                 string
 	Parameters                  []Parameter
@@ -538,6 +539,7 @@ func (g *Generator) extractPathOperations(path string, pathItem *openapi3.PathIt
 		operation := Operation{
 			Method:      method,
 			Path:        path,
+			Summary:     op.Summary,
 			Description: op.Description,
 			OperationID: op.OperationID,
 			Responses:   make(map[string]Response),
