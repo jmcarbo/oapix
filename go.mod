@@ -1,8 +1,6 @@
 module github.com/jmcarbo/oapix
 
-go 1.22.5
-
-toolchain go1.24.3
+go 1.23
 
 require golang.org/x/net v0.19.0
 
