@@ -1,0 +1,74 @@
+openapi: 3.0.0
+info:
+  title: API with Duplicate Operation Names
+  version: 1.0.0
+  description: |
+    This example demonstrates how oapix-gen handles duplicate operation names
+    when operationId is missing from the OpenAPI specification.
+paths:
+  /users:
+    get:
+      # No operationId - will generate GetUsers
+      summary: Get all users
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /admin/users:
+    get:
+      # No operationId - would normally also generate GetUsers
+      # But oapix-gen will make it unique: GetUsers2
+      summary: Get users (admin endpoint)
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /v2/users:
+    get:
+      # Has operationId - will use it exactly
+      operationId: listUsersV2
+      summary: Get users (v2 API)
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /public/users:
+    get:
+      # No operationId - would be third GetUsers
+      # But oapix-gen will make it unique: GetUsers3
+      summary: Get public users
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string

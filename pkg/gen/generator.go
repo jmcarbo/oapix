@@ -451,13 +451,49 @@ func (g *Generator) schemaToGoType(schema *openapi3.Schema) string {
 // extractOperations extracts operations from the OpenAPI spec
 func (g *Generator) extractOperations() []Operation {
 	var operations []Operation
+	usedNames := make(map[string]bool) // Track all used operation names
 
 	if g.spec.Paths != nil {
-		// Use InMatchingOrder() to preserve path order
+		// First pass: collect all names from operationIds
 		for _, path := range g.spec.Paths.InMatchingOrder() {
 			pathItem := g.spec.Paths.Value(path)
 			if pathItem != nil {
-				operations = append(operations, g.extractPathOperations(path, pathItem)...)
+				ops := g.extractPathOperations(path, pathItem)
+				for _, op := range ops {
+					if op.OperationID != "" {
+						// Mark names from explicit operationIds as used
+						usedNames[op.Name] = true
+					}
+				}
+			}
+		}
+
+		// Second pass: process all operations and ensure uniqueness
+		for _, path := range g.spec.Paths.InMatchingOrder() {
+			pathItem := g.spec.Paths.Value(path)
+			if pathItem != nil {
+				pathOps := g.extractPathOperations(path, pathItem)
+
+				// Ensure unique operation names
+				for i := range pathOps {
+					if pathOps[i].OperationID == "" {
+						// Only modify names for operations without explicit operationId
+						baseName := pathOps[i].Name
+						finalName := baseName
+						counter := 2
+
+						// Keep incrementing until we find an unused name
+						for usedNames[finalName] {
+							finalName = fmt.Sprintf("%s%d", baseName, counter)
+							counter++
+						}
+
+						pathOps[i].Name = finalName
+						usedNames[finalName] = true
+					}
+				}
+
+				operations = append(operations, pathOps...)
 			}
 		}
 	}
@@ -511,6 +547,8 @@ func (g *Generator) extractPathOperations(path string, pathItem *openapi3.PathIt
 		if op.OperationID != "" {
 			operation.Name = toPascalCase(op.OperationID)
 		} else {
+			// Generate name from method and path when operationId is missing
+			// Uniqueness is ensured in extractOperations()
 			operation.Name = generateOperationName(method, path)
 		}
 

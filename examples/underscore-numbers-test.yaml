@@ -1,0 +1,55 @@
+openapi: 3.0.0
+info:
+  title: API with Underscore Number OperationIds
+  version: 1.0.0
+  description: Test case for operationIds with underscores followed by numbers
+paths:
+  /users/v1:
+    get:
+      operationId: get_users_1
+      responses:
+        '200':
+          description: Success
+  /users/v2:
+    get:
+      operationId: get_users_2
+      responses:
+        '200':
+          description: Success
+  /items/batch1:
+    post:
+      operationId: process_batch_1
+      responses:
+        '200':
+          description: Success
+  /items/batch2:
+    post:
+      operationId: process_batch_2
+      responses:
+        '200':
+          description: Success
+  /data/version:
+    get:
+      operationId: get_data_v2
+      responses:
+        '200':
+          description: Success
+  /data/latest:
+    get:
+      operationId: get_data_v2_1
+      responses:
+        '200':
+          description: Success
+  # Test potential collision with our unique suffix generation
+  /test/first:
+    get:
+      operationId: test_operation
+      responses:
+        '200':
+          description: Success
+  /test/second:
+    get:
+      operationId: test_operation_2
+      responses:
+        '200':
+          description: Success

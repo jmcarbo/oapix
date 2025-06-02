@@ -871,3 +871,140 @@ components:
 		t.Error("client.go should not contain default import when custom import is specified")
 	}
 }
+
+func TestUniqueOperationNames(t *testing.T) {
+	// Create a spec with duplicate operation names when operationId is missing
+	specContent := `
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      # No operationId - will generate GetUsers
+      responses:
+        '200':
+          description: Success
+    post:
+      operationId: createUser
+      responses:
+        '200':
+          description: Success
+  /v1/users:
+    get:
+      # No operationId - would also generate GetUsers without uniqueness check
+      responses:
+        '200':
+          description: Success
+  /v2/users:
+    get:
+      # No operationId - would also generate GetUsers without uniqueness check
+      responses:
+        '200':
+          description: Success
+    post:
+      # No operationId - will generate PostUsers
+      responses:
+        '200':
+          description: Success
+  /api/users:
+    get:
+      operationId: getUsers
+      responses:
+        '200':
+          description: Success
+    post:
+      # No operationId - would also generate PostUsers without uniqueness check
+      responses:
+        '200':
+          description: Success
+  /special/case:
+    get:
+      # Test collision with operationId that has underscore and number
+      operationId: get_users_2
+      responses:
+        '200':
+          description: Success
+`
+
+	tmpFile, err := os.CreateTemp("", "test-unique-spec-*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Remove(tmpFile.Name())
+	}()
+
+	if _, err := tmpFile.WriteString(specContent); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "gen-unique-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	config := &Config{
+		SpecPath:       tmpFile.Name(),
+		OutputDir:      tmpDir,
+		PackageName:    "testapi",
+		GenerateClient: true,
+	}
+
+	gen, err := NewGenerator(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := gen.LoadSpec(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Extract operations and check for unique names
+	operations := gen.extractOperations()
+
+	// Track seen names
+	seenNames := make(map[string]bool)
+	duplicates := []string{}
+
+	for _, op := range operations {
+		if seenNames[op.Name] {
+			duplicates = append(duplicates, op.Name)
+		}
+		seenNames[op.Name] = true
+	}
+
+	if len(duplicates) > 0 {
+		t.Errorf("Found duplicate operation names: %v", duplicates)
+	}
+
+	// Check that all operations have expected names
+	for _, op := range operations {
+		t.Logf("Operation: %s %s -> %s (operationId: %s)", op.Method, op.Path, op.Name, op.OperationID)
+	}
+
+	// Verify we have all expected operations
+	if len(operations) != 8 {
+		t.Errorf("Expected 8 operations, got %d", len(operations))
+	}
+
+	// Check for specific collision case
+	hasGetUsers2FromOperationId := false
+
+	for _, op := range operations {
+		if op.Name == "GetUsers2" && op.OperationID == "get_users_2" {
+			hasGetUsers2FromOperationId = true
+		}
+	}
+
+	if !hasGetUsers2FromOperationId {
+		t.Error("Expected GetUsers2 from operationId get_users_2")
+	}
+}

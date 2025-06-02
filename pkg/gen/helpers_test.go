@@ -25,6 +25,21 @@ func TestToPascalCase(t *testing.T) {
 		{"test123", "Test123"},
 		{"test_123_abc", "Test123Abc"},
 		{"API_URL", "APIURL"},
+		// Test cases with underscores followed by numbers
+		{"get_user_2", "GetUser2"},
+		{"create_item_v2", "CreateItemV2"},
+		{"update_record_3_data", "UpdateRecord3Data"},
+		{"delete_file_2023", "DeleteFile2023"},
+		{"list_items_v2_1", "ListItemsV21"},
+		{"process_batch_2_items", "ProcessBatch2Items"},
+		{"get_2_users", "Get2Users"},
+		{"fetch_v2_data", "FetchV2Data"},
+		{"upload_file2", "UploadFile2"},
+		{"download_file_2", "DownloadFile2"},
+		{"method_2a", "Method2A"},
+		{"api_v2_users", "APIV2Users"},
+		{"get_v2", "GetV2"},
+		{"item_2_name", "Item2Name"},
 	}
 
 	for _, tt := range tests {
