@@ -6,6 +6,7 @@ OAPIx is a powerful Go library for generating type-safe clients from OpenAPI spe
 
 - **Code Generation**: Generate type-safe Go clients from OpenAPI 3.0 specifications
 - **Clean Interface Design**: Modular architecture with reusable components
+- **Multi-Response Handling**: Type-safe support for APIs with multiple response types per endpoint
 - **Authentication Support**: Built-in OAuth2, API Key, Bearer token, and Basic auth
 - **SOCKS Proxy Support**: Built-in support for SOCKS4/4a/5 proxies with authentication
 - **Request Editors**: Dynamic request modification for headers, authentication, and more
@@ -302,6 +303,173 @@ if err != nil {
     }
 }
 ```
+
+## Multi-Response Handling
+
+OAPIx provides comprehensive support for OpenAPI operations that can return different response types based on status codes. This is common in REST APIs where different status codes return different response schemas.
+
+### Understanding Multi-Response APIs
+
+Many REST APIs return different response types for different scenarios:
+- **200 OK**: Returns the requested resource
+- **201 Created**: Returns the newly created resource
+- **204 No Content**: Success with no response body
+- **400 Bad Request**: Returns validation errors
+- **404 Not Found**: Returns a not-found error
+- **500 Internal Server Error**: Returns server error details
+
+### Basic Multi-Response Usage
+
+When an operation has multiple possible response types, OAPIx generates methods that return a `*client.MultiResponse`:
+
+```go
+// API operation that can return different responses
+resp, err := apiClient.CreateAsset(ctx, "asset-id", assetInput)
+if err != nil {
+    // Handle network or request building errors
+    log.Fatal(err)
+}
+
+// Check status code to determine response type
+switch resp.StatusCode {
+case 200:
+    // Asset was updated
+    var asset Asset
+    if err := resp.As(&asset); err != nil {
+        log.Printf("Failed to parse asset: %v", err)
+    }
+    fmt.Printf("Asset updated: %s\n", asset.Name)
+
+case 201:
+    // Asset was created
+    var asset Asset
+    if err := resp.As(&asset); err != nil {
+        log.Printf("Failed to parse asset: %v", err)
+    }
+    fmt.Printf("Asset created: %s\n", asset.Name)
+
+case 400:
+    // Bad request error
+    var badRequest ErrorResponse
+    if err := resp.As(&badRequest); err != nil {
+        log.Printf("Failed to parse error: %v", err)
+    }
+    fmt.Printf("Validation error: %s\n", badRequest.Message)
+
+default:
+    fmt.Printf("Unexpected status: %d\n", resp.StatusCode)
+}
+```
+
+### Helper Methods
+
+The `MultiResponse` type provides convenient helper methods:
+
+```go
+// Check if response is successful (2xx)
+if resp.IsSuccess() {
+    var result SuccessResponse
+    resp.As(&result)
+}
+
+// Check if response is an error (4xx or 5xx)
+if resp.IsError() {
+    fmt.Printf("Error response: %d\n", resp.StatusCode)
+}
+
+// Check for specific status code
+if resp.Is(404) {
+    var notFound NotFoundError
+    resp.As(&notFound)
+    fmt.Printf("Resource not found: %s\n", notFound.Resource)
+}
+```
+
+### Type-Safe Response Wrappers
+
+For operations with multiple success responses (e.g., both 200 and 201), OAPIx can generate type-safe wrapper methods:
+
+```go
+// Wrap the response for type-safe access
+assetResp := WrapCreateAssetResponse(resp)
+
+// Use type-safe methods for each status code
+if assetResp.Is(200) {
+    asset, err := assetResp.As200() // Returns (*Asset, error)
+    if err != nil {
+        log.Printf("Failed to get asset: %v", err)
+        return
+    }
+    fmt.Printf("Updated asset: %s\n", asset.Name)
+} else if assetResp.Is(201) {
+    asset, err := assetResp.As201() // Returns (*Asset, error)
+    if err != nil {
+        log.Printf("Failed to get asset: %v", err)
+        return
+    }
+    fmt.Printf("Created asset: %s\n", asset.Name)
+}
+```
+
+### OpenAPI Specification Example
+
+Here's an example OpenAPI specification with multiple response types:
+
+```yaml
+paths:
+  /assets/{assetId}:
+    post:
+      operationId: createAsset
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetInput'
+      responses:
+        "200":
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+```
+
+### Best Practices
+
+1. **Always check the status code** before attempting to parse the response body
+2. **Use helper methods** (`IsSuccess()`, `IsError()`, `Is()`) for cleaner code
+3. **Handle all documented response types** in your OpenAPI spec
+4. **Use type-safe wrappers** when available for compile-time safety
+5. **Log unexpected status codes** to help with debugging
+
+### Complete Example
+
+See the [examples/multi_response_example.go](examples/multi_response_example.go) for a complete working example demonstrating all multi-response handling patterns.
 
 ## Request Editors
 
