@@ -63,7 +63,8 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           ./scripts/version-bump.sh
-          git push origin ${{ steps.version_check.outputs.new_version }}
+          # Push the newly created tag
+          git push origin --tags
 
       - name: Generate changelog
         if: steps.version_check.outputs.needs_release == 'true'
