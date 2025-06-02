@@ -37,7 +37,7 @@ build: ## Build the project
 
 .PHONY: build-gen
 build-gen: ## Build the oapix-gen code generator
-	go build -o bin/oapix-gen ./cmd/oapix-gen/
+	go build -ldflags "-X main.version=$(VERSION_NO_V)" -o bin/oapix-gen ./cmd/oapix-gen/
 
 .PHONY: build-all
 build-all: build build-gen ## Build all binaries

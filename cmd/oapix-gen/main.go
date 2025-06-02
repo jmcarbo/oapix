@@ -9,7 +9,7 @@ import (
 	"github.com/jmcarbo/oapix/pkg/gen"
 )
 
-const version = "0.1.0"
+var version = "dev"
 
 func main() {
 	var (
