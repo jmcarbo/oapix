@@ -403,6 +403,114 @@ func TestGenerateOperationName(t *testing.T) {
 	}
 }
 
+func TestGetClientImports(t *testing.T) {
+	tests := []struct {
+		name       string
+		operations []Operation
+		wantTime   bool
+	}{
+		{
+			name:       "no operations",
+			operations: []Operation{},
+			wantTime:   false,
+		},
+		{
+			name: "operation with time.Time parameter",
+			operations: []Operation{
+				{
+					Parameters: []Parameter{
+						{Name: "startDate", Type: "time.Time", In: "query"},
+					},
+				},
+			},
+			wantTime: true,
+		},
+		{
+			name: "operation with time.Time in request body",
+			operations: []Operation{
+				{
+					RequestBody: &RequestBody{
+						Type: "*models.CreateEventRequest // has time.Time field",
+					},
+				},
+			},
+			wantTime: true,
+		},
+		{
+			name: "operation with time.Time in response",
+			operations: []Operation{
+				{
+					Responses: map[string]Response{
+						"200": {Type: "*models.EventResponse // has time.Time field"},
+					},
+				},
+			},
+			wantTime: true,
+		},
+		{
+			name: "operation without time.Time",
+			operations: []Operation{
+				{
+					Parameters: []Parameter{
+						{Name: "id", Type: "string", In: "path"},
+						{Name: "limit", Type: "int", In: "query"},
+					},
+					RequestBody: &RequestBody{
+						Type: "*models.UpdateUserRequest",
+					},
+					Responses: map[string]Response{
+						"200": {Type: "*models.UserResponse"},
+					},
+				},
+			},
+			wantTime: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gen := &Generator{
+				config: &Config{
+					PackageName:   "test",
+					ClientImport:  "github.com/jmcarbo/oapix/pkg/client",
+					ModelPackage:  "test",
+					ClientPackage: "test",
+				},
+			}
+
+			imports := gen.getClientImports(tt.operations)
+
+			// Check if time import is present
+			hasTime := false
+			for _, imp := range imports {
+				if imp == "time" {
+					hasTime = true
+					break
+				}
+			}
+
+			if hasTime != tt.wantTime {
+				t.Errorf("getClientImports() time import = %v, want %v", hasTime, tt.wantTime)
+			}
+
+			// Always should have these imports
+			requiredImports := []string{"context", "fmt", "github.com/jmcarbo/oapix/pkg/client"}
+			for _, req := range requiredImports {
+				found := false
+				for _, imp := range imports {
+					if imp == req {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("missing required import: %s", req)
+				}
+			}
+		})
+	}
+}
+
 func TestBuildPath(t *testing.T) {
 	tests := []struct {
 		name   string

@@ -789,6 +789,39 @@ func (g *Generator) getClientImports(operations []Operation) []string {
 		imports[fmt.Sprintf("github.com/jmcarbo/oapix/%s/models", g.config.OutputDir)] = true
 	}
 
+	// Check if any operation uses time.Time
+	needsTime := false
+	for _, op := range operations {
+		// Check parameters
+		for _, param := range op.Parameters {
+			if strings.Contains(param.Type, "time.Time") {
+				needsTime = true
+				break
+			}
+		}
+
+		// Check request body
+		if op.RequestBody != nil && strings.Contains(op.RequestBody.Type, "time.Time") {
+			needsTime = true
+		}
+
+		// Check responses
+		for _, resp := range op.Responses {
+			if strings.Contains(resp.Type, "time.Time") {
+				needsTime = true
+				break
+			}
+		}
+
+		if needsTime {
+			break
+		}
+	}
+
+	if needsTime {
+		imports["time"] = true
+	}
+
 	var result []string
 	for imp := range imports {
 		result = append(result, imp)
