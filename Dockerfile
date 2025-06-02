@@ -1,5 +1,9 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS builder
+
+# Build arguments for cross-compilation
+ARG TARGETOS
+ARG TARGETARCH
 
 # Install certificates for HTTPS support
 RUN apk add --no-cache ca-certificates
@@ -16,10 +20,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build static binary
+# Build static binary for target platform
 # CGO_ENABLED=0 for static binary
 # -ldflags for smaller binary size
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-w -s -extldflags '-static'" \
     -o oapix-gen \
     ./cmd/oapix-gen

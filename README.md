@@ -34,12 +34,20 @@ go install github.com/jmcarbo/oapix/cmd/oapix-gen@latest
 #### Using Docker
 
 ```bash
-# Build the Docker image
-docker build -t oapix-gen .
+# Pull from GitHub Container Registry (recommended)
+docker pull ghcr.io/jmcarbo/oapix:latest
 
-# Or pull from Docker Hub (if published)
+# Or pull from Docker Hub
 docker pull jmcarbo/oapix-gen:latest
+
+# Or build the image locally
+docker build -t oapix-gen .
 ```
+
+The Docker image is automatically built and pushed to GitHub Container Registry for:
+- Every push to main branch
+- Every release tag
+- Multi-platform support: linux/amd64, linux/arm64, linux/arm/v7
 
 ### Generate a Client
 
@@ -61,13 +69,13 @@ oapix-gen -spec api.yaml -out ./generated -package myapi -client-import github.c
 
 ```bash
 # Generate client using Docker (mount current directory)
-docker run --rm -v $(pwd):/work -w /work oapix-gen \
+docker run --rm -v $(pwd):/work -w /work ghcr.io/jmcarbo/oapix:latest \
   -spec api.yaml \
   -package myapi \
   -output ./generated
 
 # With custom options
-docker run --rm -v $(pwd):/work -w /work oapix-gen \
+docker run --rm -v $(pwd):/work -w /work ghcr.io/jmcarbo/oapix:latest \
   -spec api.yaml \
   -package myapi \
   -output ./generated \
@@ -75,7 +83,7 @@ docker run --rm -v $(pwd):/work -w /work oapix-gen \
   -verbose
 
 # Using a spec from URL (requires network access)
-docker run --rm -v $(pwd):/output -w /output oapix-gen \
+docker run --rm -v $(pwd):/output -w /output ghcr.io/jmcarbo/oapix:latest \
   -spec https://api.example.com/openapi.yaml \
   -package myapi
 ```

@@ -1,47 +1,39 @@
 # Git files
 .git
 .gitignore
+.github
 
 # Documentation
 *.md
 LICENSE
 docs/
 
-# Test files
+# Examples and test files
+examples/
 *_test.go
 testdata/
-examples/
 
 # Build artifacts
+oapix-gen
 bin/
 dist/
-build/
-*.exe
-oapix-gen
-
-# Temporary files
 tmp/
-temp/
-*.tmp
-*.log
 
 # IDE files
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
 
 # OS files
 .DS_Store
+Thumbs.db
 
-# Docker files
+# Go build cache
+.cache/
+
+# Docker files (prevent recursive copy)
 Dockerfile
 .dockerignore
-
-# CI/CD
-.github/
-.gitlab-ci.yml
-
-# Go workspace
-go.work
-go.work.sum
+docker-compose*.yml
