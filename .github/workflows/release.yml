@@ -71,16 +71,32 @@ jobs:
         id: changelog
         run: |
           # Get commits since last tag
-          COMMITS=$(git log "${{ steps.version_check.outputs.current_version }}..HEAD" --pretty=format:"- %s" --no-merges)
+          if [ "${{ steps.version_check.outputs.current_version }}" == "v0.0.0" ]; then
+            # No previous tags, get all commits
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            # Get commits since last tag
+            COMMITS=$(git log "${{ steps.version_check.outputs.current_version }}..HEAD" --pretty=format:"- %s" --no-merges)
+          fi
           
           # Create changelog content
-          cat > CHANGELOG.md << EOF
+          if [ "${{ steps.version_check.outputs.current_version }}" == "v0.0.0" ]; then
+            cat > CHANGELOG.md << EOF
+          ## What's Changed
+          
+          Initial release of oapix - OpenAPI Client Library for Go
+          
+          $COMMITS
+          EOF
+          else
+            cat > CHANGELOG.md << EOF
           ## What's Changed
           
           $COMMITS
           
           **Full Changelog**: https://github.com/jmcarbo/oapix/compare/${{ steps.version_check.outputs.current_version }}...${{ steps.version_check.outputs.new_version }}
           EOF
+          fi
           
           # Save changelog for release body
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
