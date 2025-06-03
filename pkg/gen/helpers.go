@@ -371,11 +371,11 @@ func buildPathWithNamedParams(path string, params []Parameter) string {
 	// Extract all path parameters from the path
 	pathParamNames := extractPathParams(path)
 
-	// Create a map of parameter names to their Go variable names
-	pathParams := make(map[string]string)
+	// Create a map of parameter names to their Go variable names and types
+	pathParams := make(map[string]Parameter)
 	for _, param := range params {
 		if param.In == "path" {
-			pathParams[param.Name] = param.Name
+			pathParams[param.Name] = param
 		}
 	}
 
@@ -383,10 +383,24 @@ func buildPathWithNamedParams(path string, params []Parameter) string {
 	result := fmt.Sprintf(`"%s"`, path)
 
 	for _, paramName := range pathParamNames {
-		if goVarName, ok := pathParams[paramName]; ok {
+		if param, ok := pathParams[paramName]; ok {
+			// Determine the format verb based on parameter type
+			formatVerb := "%v" // default format
+			switch param.Type {
+			case "int", "int8", "int16", "int32", "int64",
+				"uint", "uint8", "uint16", "uint32", "uint64":
+				formatVerb = "%d"
+			case "float32", "float64":
+				formatVerb = "%f"
+			case "bool":
+				formatVerb = "%t"
+			case "string":
+				formatVerb = "%s"
+			}
+
 			// Build nested string replacement
-			result = fmt.Sprintf(`strings.ReplaceAll(%s, "{%s}", fmt.Sprintf("%%s", %s))`,
-				result, paramName, goVarName)
+			result = fmt.Sprintf(`strings.ReplaceAll(%s, "{%s}", fmt.Sprintf("%s", %s))`,
+				result, paramName, formatVerb, param.Name)
 		}
 	}
 
