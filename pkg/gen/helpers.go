@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"text/template"
@@ -12,36 +13,37 @@ import (
 // templateFuncs returns custom template functions
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"toPascalCase":         toPascalCase,
-		"toCamelCase":          toCamelCase,
-		"toSnakeCase":          toSnakeCase,
-		"toKebabCase":          toKebabCase,
-		"toUpperCase":          strings.ToUpper,
-		"toLowerCase":          strings.ToLower,
-		"pluralize":            pluralize,
-		"singularize":          singularize,
-		"hasPrefix":            strings.HasPrefix,
-		"hasSuffix":            strings.HasSuffix,
-		"trimPrefix":           strings.TrimPrefix,
-		"trimSuffix":           strings.TrimSuffix,
-		"contains":             strings.Contains,
-		"replace":              strings.ReplaceAll,
-		"split":                strings.Split,
-		"join":                 strings.Join,
-		"sanitizeGoName":       sanitizeGoName,
-		"isBuiltinType":        isBuiltinType,
-		"needsPointer":         needsPointer,
-		"buildPath":            buildPath,
-		"extractPathParams":    extractPathParams,
-		"hasPathParams":        hasPathParams,
-		"hasQueryParams":       hasQueryParams,
-		"hasHeaderParams":      hasHeaderParams,
-		"filterParamsByIn":     filterParamsByIn,
-		"buildMethodSignature": buildMethodSignature,
-		"goDoc":                goDoc,
-		"inc":                  inc,
-		"dec":                  dec,
-		"startsWith":           strings.HasPrefix,
+		"toPascalCase":             toPascalCase,
+		"toCamelCase":              toCamelCase,
+		"toSnakeCase":              toSnakeCase,
+		"toKebabCase":              toKebabCase,
+		"toUpperCase":              strings.ToUpper,
+		"toLowerCase":              strings.ToLower,
+		"pluralize":                pluralize,
+		"singularize":              singularize,
+		"hasPrefix":                strings.HasPrefix,
+		"hasSuffix":                strings.HasSuffix,
+		"trimPrefix":               strings.TrimPrefix,
+		"trimSuffix":               strings.TrimSuffix,
+		"contains":                 strings.Contains,
+		"replace":                  strings.ReplaceAll,
+		"split":                    strings.Split,
+		"join":                     strings.Join,
+		"sanitizeGoName":           sanitizeGoName,
+		"isBuiltinType":            isBuiltinType,
+		"needsPointer":             needsPointer,
+		"buildPath":                buildPath,
+		"buildPathWithNamedParams": buildPathWithNamedParams,
+		"extractPathParams":        extractPathParams,
+		"hasPathParams":            hasPathParams,
+		"hasQueryParams":           hasQueryParams,
+		"hasHeaderParams":          hasHeaderParams,
+		"filterParamsByIn":         filterParamsByIn,
+		"buildMethodSignature":     buildMethodSignature,
+		"goDoc":                    goDoc,
+		"inc":                      inc,
+		"dec":                      dec,
+		"startsWith":               strings.HasPrefix,
 	}
 }
 
@@ -361,6 +363,33 @@ func buildPath(path string, params []Parameter) string {
 			result = strings.ReplaceAll(result, placeholder, replacement)
 		}
 	}
+	return result
+}
+
+// buildPathWithNamedParams builds the Go code for path construction with named parameters
+func buildPathWithNamedParams(path string, params []Parameter) string {
+	// Extract all path parameters from the path
+	pathParamNames := extractPathParams(path)
+
+	// Create a map of parameter names to their Go variable names
+	pathParams := make(map[string]string)
+	for _, param := range params {
+		if param.In == "path" {
+			pathParams[param.Name] = param.Name
+		}
+	}
+
+	// Build the path replacement code
+	result := fmt.Sprintf(`"%s"`, path)
+
+	for _, paramName := range pathParamNames {
+		if goVarName, ok := pathParams[paramName]; ok {
+			// Build nested string replacement
+			result = fmt.Sprintf(`strings.ReplaceAll(%s, "{%s}", fmt.Sprintf("%%s", %s))`,
+				result, paramName, goVarName)
+		}
+	}
+
 	return result
 }
 
