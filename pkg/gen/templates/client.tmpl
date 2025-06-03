@@ -34,7 +34,7 @@ func New{{.ClientName}}(config *client.Config) (*{{.ClientName}}, error) {
 // Use the response wrapper methods to access the specific response type:
 {{range $code, $resp := $op.Responses}}{{if and (startsWith $code "2") $resp.Type}}//   resp.As{{$code}}() - returns *{{$resp.Type}}
 {{end}}{{end}}{{end}}func (c *{{$.ClientName}}) {{$op.Name}}({{buildMethodSignature $op}}) (*client.MultiResponse, error) {
-	path := fmt.Sprintf("{{buildPath $op.Path $op.Parameters}}"{{range filterParamsByIn $op.Parameters "path"}}, {{.Name}}{{end}})
+	path := {{buildPathWithNamedParams $op.Path $op.Parameters}}
 
 {{if or (hasQueryParams $op.Parameters) (hasHeaderParams $op.Parameters)}}
 	opts := []client.RequestOption{}

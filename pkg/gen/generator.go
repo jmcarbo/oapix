@@ -789,14 +789,17 @@ func (g *Generator) getClientImports(operations []Operation) []string {
 		imports[fmt.Sprintf("github.com/jmcarbo/oapix/%s/models", g.config.OutputDir)] = true
 	}
 
-	// Check if any operation uses time.Time
+	// Check if any operation uses time.Time or has path parameters
 	needsTime := false
+	needsStrings := false
 	for _, op := range operations {
-		// Check parameters
+		// Check if operation has path parameters
 		for _, param := range op.Parameters {
+			if param.In == "path" {
+				needsStrings = true
+			}
 			if strings.Contains(param.Type, "time.Time") {
 				needsTime = true
-				break
 			}
 		}
 
@@ -813,13 +816,16 @@ func (g *Generator) getClientImports(operations []Operation) []string {
 			}
 		}
 
-		if needsTime {
+		if needsTime && needsStrings {
 			break
 		}
 	}
 
 	if needsTime {
 		imports["time"] = true
+	}
+	if needsStrings {
+		imports["strings"] = true
 	}
 
 	var result []string
