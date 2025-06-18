@@ -526,6 +526,34 @@ func (g *Generator) schemaRefToGoType(schemaRef *openapi3.SchemaRef) string {
 	return "interface{}"
 }
 
+// resolveSchemaRef resolves a schema reference to its actual schema
+func (g *Generator) resolveSchemaRef(schemaRef *openapi3.SchemaRef) *openapi3.Schema {
+	if schemaRef == nil {
+		return nil
+	}
+
+	// If it's not a reference, return the value directly
+	if schemaRef.Ref == "" {
+		return schemaRef.Value
+	}
+
+	// Extract the schema name from the reference
+	// e.g., "#/components/schemas/User" -> "User"
+	parts := strings.Split(schemaRef.Ref, "/")
+	if len(parts) < 4 || parts[0] != "#" || parts[1] != "components" || parts[2] != "schemas" {
+		return nil
+	}
+
+	schemaName := parts[3]
+	if g.spec.Components != nil && g.spec.Components.Schemas != nil {
+		if resolvedRef, exists := g.spec.Components.Schemas[schemaName]; exists && resolvedRef.Value != nil {
+			return resolvedRef.Value
+		}
+	}
+
+	return nil
+}
+
 // schemaRefToGoTypeWithName converts an OpenAPI schema reference to a Go type with field name context
 func (g *Generator) schemaRefToGoTypeWithName(schemaRef *openapi3.SchemaRef, fieldName string) string {
 	if schemaRef == nil {
@@ -673,6 +701,47 @@ func (g *Generator) extractPathOperations(path string, pathItem *openapi3.PathIt
 			if paramRef.Value == nil {
 				continue
 			}
+
+			// Check if this is an object query parameter that should be flattened
+			if paramRef.Value.In == "query" && paramRef.Value.Schema != nil {
+				// Resolve the schema (handle both direct schemas and references)
+				var schema *openapi3.Schema
+				if paramRef.Value.Schema.Value != nil {
+					schema = paramRef.Value.Schema.Value
+				} else if paramRef.Value.Schema.Ref != "" {
+					// Resolve the reference
+					if resolved := g.resolveSchemaRef(paramRef.Value.Schema); resolved != nil {
+						schema = resolved
+					}
+				}
+
+				if schema != nil && schema.Type != nil && schema.Type.Is("object") {
+					// Flatten object query parameters
+					for propName, propSchema := range schema.Properties {
+						param := Parameter{
+							Name:        propName,
+							In:          "query",
+							Description: "",
+							Required:    false, // Individual properties are optional unless explicitly required
+						}
+						if propSchema.Value != nil && propSchema.Value.Description != "" {
+							param.Description = propSchema.Value.Description
+						}
+						// Check if property is required
+						for _, req := range schema.Required {
+							if req == propName {
+								param.Required = true
+								break
+							}
+						}
+						param.Type = g.schemaRefToGoType(propSchema)
+						operation.Parameters = append(operation.Parameters, param)
+					}
+					continue
+				}
+			}
+
+			// Regular parameter handling
 			param := Parameter{
 				Name:        paramRef.Value.Name,
 				In:          paramRef.Value.In,

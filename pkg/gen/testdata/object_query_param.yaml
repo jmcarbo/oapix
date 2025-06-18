@@ -1,0 +1,44 @@
+openapi: 3.0.0
+info:
+  title: Test API with Object Query Parameter
+  version: 1.0.0
+paths:
+  /api/v2/my-team/features:
+    get:
+      operationId: findFeaturesForCurrentTeamV2
+      summary: Find features with object query parameter
+      parameters:
+        - in: query
+          name: option
+          required: true
+          schema:
+            $ref: "#/components/schemas/FeaturesOption"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feature"
+components:
+  schemas:
+    FeaturesOption:
+      type: object
+      properties:
+        prefix:
+          type: string
+          description: Return only features with the feature key containing the given prefix.
+          example: integration
+        withConfig:
+          type: boolean
+          default: false
+          description: Optional boolean value to tell if Configurations needs to be included in the result.
+    Feature:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
