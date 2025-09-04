@@ -253,11 +253,12 @@ func (g *Generator) generateFile(templateName string, data interface{}, outputPa
 
 // Model represents a Go model generated from an OpenAPI schema
 type Model struct {
-	Name        string
-	Description string
-	Fields      []Field
-	IsEnum      bool
-	EnumValues  []string
+	Name          string
+	Description   string
+	Fields        []Field
+	IsEnum        bool
+	EnumValues    []string
+	IsStringAlias bool // true for simple string types without enum
 }
 
 // Field represents a field in a model
@@ -347,6 +348,12 @@ func (g *Generator) schemaToModel(name string, schema *openapi3.Schema) *Model {
 				model.EnumValues = append(model.EnumValues, str)
 			}
 		}
+		return model
+	}
+
+	// Handle simple string types (without enum)
+	if schema.Type != nil && schema.Type.Is("string") {
+		model.IsStringAlias = true
 		return model
 	}
 

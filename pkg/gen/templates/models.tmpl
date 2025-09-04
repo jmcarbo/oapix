@@ -19,6 +19,9 @@ const (
 	{{$model.Name}}{{toPascalCase $value}} {{$model.Name}} = "{{$value}}"
 {{- end}}
 )
+{{else if .IsStringAlias}}
+{{if .Description}}{{goDoc .Description ""}}{{end}}
+type {{.Name}} string
 {{else}}
 {{if .Description}}{{goDoc .Description ""}}{{end}}
 type {{.Name}} struct {

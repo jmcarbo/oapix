@@ -247,6 +247,12 @@ func TestExtractModels(t *testing.T) {
 						Enum: []interface{}{"active", "inactive", "pending"},
 					},
 				},
+				"SimpleString": {
+					Value: &openapi3.Schema{
+						Type: &stringType,
+						Description: "A simple string without enum",
+					},
+				},
 			},
 		},
 	}
@@ -254,8 +260,8 @@ func TestExtractModels(t *testing.T) {
 	gen := &Generator{spec: spec}
 	models := gen.extractModels()
 
-	if len(models) != 2 {
-		t.Errorf("extractModels() returned %d models, want 2", len(models))
+	if len(models) != 3 {
+		t.Errorf("extractModels() returned %d models, want 3", len(models))
 	}
 
 	// Check User model
@@ -313,6 +319,34 @@ func TestExtractModels(t *testing.T) {
 	if len(statusModel.EnumValues) != 3 {
 		t.Errorf("Status enum has %d values, want 3", len(statusModel.EnumValues))
 	}
+
+	// Check SimpleString model - should be a simple string type alias, not a struct
+	var simpleStringModel *Model
+	for i := range models {
+		if models[i].Name == "SimpleString" {
+			simpleStringModel = &models[i]
+			break
+		}
+	}
+
+	if simpleStringModel == nil {
+		t.Fatal("SimpleString model not found")
+	}
+
+	if simpleStringModel.IsEnum {
+		t.Error("SimpleString model should not be an enum")
+	}
+
+	if len(simpleStringModel.Fields) > 0 {
+		t.Errorf("SimpleString model should not have fields (should be a string type alias), but has %d fields: %+v", len(simpleStringModel.Fields), simpleStringModel.Fields)
+	}
+
+	if !simpleStringModel.IsStringAlias {
+		t.Error("SimpleString model should be marked as IsStringAlias=true")
+	}
+
+	// Debug: print the model to see what we're getting
+	t.Logf("SimpleString model: %+v", *simpleStringModel)
 }
 
 func TestGenerateFromReader(t *testing.T) {
